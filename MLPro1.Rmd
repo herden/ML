@@ -1,0 +1,93 @@
+---
+title: "Weight Lifting Machine Learning Project"
+output: pdf_document
+---
+# Synopsys
+
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases. 
+
+# Data
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. 
+
+```{r cache=TRUE}
+download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", destfile="./ML1Pro/pml-training.csv",method="curl")
+DataTrain<-read.csv("./ML1Pro/pml-training.csv")
+download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", destfile="./ML1Pro/pml-testing.csv",method="curl")
+DataTest<-read.csv("./ML1Pro/pml-testing.csv")
+```
+
+# PreProcessing
+```{r}
+library(caret)
+```
+
+```
+There is some personal in data set which is does not carry any useful info for prediction. We are going to eliminate that Colomns
+```{r}
+DataTrain2 <- DataTrain[, -seq(from = 1, to = 8, by = 1)]
+```
+
+In this data a lot of columns which have most zeros.So we are removing Coulumns which NAs means equal to zero.
+
+```{r}
+DataTrain3<-subset(DataTrain2, select=colMeans(is.na(DataTrain2)) == 0)
+```
+ 
+ I would like to remove all zeros columns, then I tried using nearZeroVar(dataset).
+ 
+ 
+```{r}
+removeColumns <-nearZeroVar(DataTrain3) 
+DataTrain3 <-DataTrain3[, -removeColumns]
+```
+As resul we get
+```{r}
+dim(DataTrain3)
+```
+# Get training/Test set
+
+```{r cache=TRUE}
+set.seed(1832)
+asd <- createDataPartition(y = DataTrain3$classe, p = 0.1, list = F)
+asd1<- DataTrain3[asd, ]
+asd2<- DataTrain3[-asd, ]
+```
+# Model training
+Let`s use Random forest classifier for our model
+
+```{r}
+asd4 <- train(classe ~ ., data = asd1, method = "rf")
+```
+
+let`s choose 20 important variebles
+
+```{r}
+IObj<-varImp(asd4)
+plot(IObj, main = "Top 20 Importance Variable", top = 20)
+```
+
+# Cross-Validation
+
+Let`s mesuare Cross-Validation error
+
+```{r}
+asd3<-asd2[sample(1:nrow(asd2),500),]
+error<-confusionMatrix(asd3$classe, predict(asd4,asd3))
+error
+```
+# Test-estimated out-of-sample error
+
+```{r}
+SampleError <- 1 - error$overall[1];
+names(SampleError) <- "Out of Sample Error"
+SampleError
+```
+
+# Test set
+Now we can apply machine learning algorithm for the 20 test cases
+
+```{r}
+DataTest$classe <- 1:nrow(DataTest);
+predict(asd4,DataTest)
+```
+
